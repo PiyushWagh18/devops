@@ -62,3 +62,14 @@
     }
   });
 }());
+
+(function () {
+  var deleteModal = document.getElementById('deleteModal');
+  if (deleteModal) {
+    deleteModal.addEventListener('show.bs.modal', function (event) {
+      var btn = event.relatedTarget;
+      document.getElementById('deleteTaskTitle').textContent = btn.getAttribute('data-task-title');
+      document.getElementById('deleteForm').action = btn.getAttribute('data-delete-url');
+    });
+  }
+}());
