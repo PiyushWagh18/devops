@@ -80,8 +80,8 @@ def create_app():
         # Content Security Policy – no unsafe-inline; all scripts from 'self' or CDN
         csp = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "script-src 'self' https://cdn.jsdelivr.net; "
+            "style-src 'self' https://cdn.jsdelivr.net; "
             "font-src 'self' https://cdn.jsdelivr.net; "
             "img-src 'self' data:; "
             "connect-src 'self'; "

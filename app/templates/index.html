@@ -1,7 +1,7 @@
 {% extends "base.html" %}
-
+ 
 {% block title %}Dashboard – TaskFlow{% endblock %}
-
+ 
 {% block content %}
 <!-- Stats row -->
 <div class="row g-3 mb-4">
@@ -38,7 +38,7 @@
     </div>
   </div>
 </div>
-
+ 
 <!-- Charts row -->
 <div class="row g-3 mb-4">
   <div class="col-md-6">
@@ -68,7 +68,7 @@
     </div>
   </div>
 </div>
-
+ 
 <!-- Filter + Task list -->
 <div class="card">
   <div class="card-header bg-white d-flex flex-wrap align-items-center justify-content-between gap-2 py-3">
@@ -188,17 +188,9 @@
     </div>
   </div>
 </div>
-
+ 
 {% endblock %}
-
+ 
 {% block extra_scripts %}
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
-<script>
-  var deleteModal = document.getElementById('deleteModal');
-  deleteModal.addEventListener('show.bs.modal', function(event) {
-    var btn = event.relatedTarget;
-    document.getElementById('deleteTaskTitle').textContent = btn.getAttribute('data-task-title');
-    document.getElementById('deleteForm').action = btn.getAttribute('data-delete-url');
-  });
-</script>
 {% endblock %}
