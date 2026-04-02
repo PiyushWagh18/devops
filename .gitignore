@@ -1,0 +1,49 @@
+# Environment & secrets
+.env
+*.pem
+
+# Credentials / sensitive files
+AdminUser_accessKeys.csv
+AdminUser_credentials.csv
+details.txt
+login-details.txt
+pr.txt
+AGENTS.md
+Cloud_DevOpsSec_Project_Brief_sem2_25-26.pdf
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Database
+app.db
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Pytest
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# OS
+.DS_Store
+Thumbs.db

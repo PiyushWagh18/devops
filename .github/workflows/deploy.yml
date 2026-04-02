@@ -1,0 +1,163 @@
+name: CI/CD Pipeline – TaskFlow
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────
+  # Stage 1 – Unit Tests
+  # ─────────────────────────────────────────────────────────────────────────
+  test:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run pytest
+        run: pytest tests/ -v --tb=short
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Stage 2 – Security Analysis (DevSecOps)
+  #   • Bandit    – Static Application Security Testing (SAST)
+  #   • pip-audit – Software Composition Analysis (SCA / dependency CVEs)
+  # Reports are uploaded as pipeline artifacts for evidence / review.
+  # ─────────────────────────────────────────────────────────────────────────
+  security-scan:
+    name: Security Analysis (SAST & SCA)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Bandit – Static Application Security Testing (SAST)
+        run: |
+          bandit -r app/ -ll -f json -o bandit-report.json || true
+          bandit -r app/ -ll
+
+      - name: pip-audit – Dependency Vulnerability Scan (SCA)
+        continue-on-error: true
+        run: |
+          pip-audit --format json -o pip-audit-report.json || true
+          pip-audit --desc
+
+      - name: Upload security scan reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-reports-${{ github.run_id }}
+          path: |
+            bandit-report.json
+            pip-audit-report.json
+          retention-days: 30
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Stage 3 – Deploy to EC2
+  # Runs only after test AND security-scan both pass.
+  # The deploy script is fully self-contained:
+  #   • Installs Python3/pip3/git if missing (first-run bootstrap)
+  #   • Clones repo on first deploy; git pull on subsequent deploys
+  #   • Writes .env from GitHub Actions secrets (never committed to repo)
+  #   • Installs/updates pip dependencies
+  #   • Restarts gunicorn gracefully
+  # ─────────────────────────────────────────────────────────────────────────
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+    needs: [test, security-scan]
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+
+            # ── Bootstrap: install system deps if not already present ──────
+            if ! command -v python3 &>/dev/null || ! command -v pip3 &>/dev/null; then
+              sudo dnf install -y python3 python3-pip git --quiet
+            fi
+            if ! command -v git &>/dev/null; then
+              sudo dnf install -y git --quiet
+            fi
+
+            APP_DIR=~/devops
+
+            # ── Clone on first deploy; pull latest on subsequent deploys ──
+            if [ ! -d "$APP_DIR/.git" ]; then
+              git clone https://github.com/PiyushWagh18/devops.git "$APP_DIR"
+            else
+              cd "$APP_DIR"
+              git fetch origin main
+              git reset --hard origin/main
+            fi
+
+            cd "$APP_DIR"
+
+            # ── Write .env from GitHub Actions secrets ────────────────────
+            # .env is never committed to the repo; CI/CD injects it on every deploy.
+            cat > .env << EOF
+            SECRET_KEY=${{ secrets.FLASK_SECRET_KEY }}
+            FLASK_ENV=production
+            FLASK_DEBUG=False
+            DATABASE_URL=sqlite:///app.db
+            EOF
+
+            # ── Create / reuse a Python virtual environment ───────────────
+            if [ ! -d ~/venv ]; then
+              python3 -m venv ~/venv
+            fi
+            source ~/venv/bin/activate
+
+            # ── Install / update dependencies inside the venv ─────────────
+            pip install --upgrade pip --quiet
+            pip install -r requirements.txt --quiet
+
+            # ── Graceful gunicorn restart ─────────────────────────────────
+            pkill gunicorn || true
+            sleep 1
+            nohup gunicorn -w 4 -b 0.0.0.0:5000 run:app \
+              --log-file ~/gunicorn.log \
+              --access-logfile ~/gunicorn-access.log \
+              --daemon
+
+            sleep 2
+
+            # ── Verify the app is up ──────────────────────────────────────
+            if pgrep gunicorn > /dev/null; then
+              echo "PASS: Gunicorn is running"
+            else
+              echo "FAIL: Gunicorn failed to start - log:"
+              cat ~/gunicorn.log
+              exit 1
+            fi
+
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/)
+            echo "PASS: App responded HTTP $HTTP_CODE"
+            echo "Deployment complete at http://${{ secrets.EC2_HOST }}:5000"
+

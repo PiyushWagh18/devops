@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}{{ code }} – TaskFlow{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+  <div class="col-md-6 text-center">
+    <div class="card shadow-sm">
+      <div class="card-body py-5">
+        <div class="fs-1 fw-bold text-danger mb-2">{{ code }}</div>
+        <h4 class="fw-semibold mb-3">{{ message }}</h4>
+        <p class="text-muted mb-4">
+          {% if code == 404 %}
+            The page you are looking for does not exist or has been moved.
+          {% elif code == 403 %}
+            You do not have permission to access this resource.
+          {% else %}
+            Something went wrong on the server. Please try again later.
+          {% endif %}
+        </p>
+        <a href="{{ url_for('main.index') }}" class="btn btn-primary">
+          <i class="bi bi-house-door me-1"></i> Back to Dashboard
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard – TaskFlow{% endblock %}
+
+{% block content %}
+<!-- Stats row -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card text-center h-100">
+      <div class="card-body">
+        <div class="fs-1 fw-bold text-primary">{{ tasks | length if not status_filter and not priority_filter else status_counts.values() | sum }}</div>
+        <div class="text-muted small">Total Tasks</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center h-100">
+      <div class="card-body">
+        <div class="fs-1 fw-bold text-secondary">{{ status_counts['todo'] }}</div>
+        <div class="text-muted small">To Do</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center h-100">
+      <div class="card-body">
+        <div class="fs-1 fw-bold text-primary">{{ status_counts['in-progress'] }}</div>
+        <div class="text-muted small">In Progress</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center h-100">
+      <div class="card-body">
+        <div class="fs-1 fw-bold text-success">{{ status_counts['done'] }}</div>
+        <div class="text-muted small">Done</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts row -->
+<div class="row g-3 mb-4">
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header fw-semibold bg-white py-3">
+        <i class="bi bi-bar-chart-fill text-primary me-2"></i> Tasks by Status
+      </div>
+      <div class="card-body d-flex align-items-center justify-content-center" style="height:220px;">
+        <canvas id="statusChart"
+          data-todo="{{ status_counts['todo'] }}"
+          data-inprogress="{{ status_counts['in-progress'] }}"
+          data-done="{{ status_counts['done'] }}"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header fw-semibold bg-white py-3">
+        <i class="bi bi-pie-chart-fill text-primary me-2"></i> Tasks by Priority
+      </div>
+      <div class="card-body d-flex align-items-center justify-content-center" style="height:220px;">
+        <canvas id="priorityChart"
+          data-low="{{ priority_counts['low'] }}"
+          data-medium="{{ priority_counts['medium'] }}"
+          data-high="{{ priority_counts['high'] }}"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Filter + Task list -->
+<div class="card">
+  <div class="card-header bg-white d-flex flex-wrap align-items-center justify-content-between gap-2 py-3">
+    <h5 class="mb-0 fw-semibold"><i class="bi bi-list-task me-2 text-primary"></i>All Tasks</h5>
+    <div class="d-flex gap-2 flex-wrap">
+      <form method="get" action="{{ url_for('main.index') }}" class="d-flex gap-2 flex-wrap align-items-center">
+        <select name="status" class="form-select form-select-sm" style="width:140px;" onchange="this.form.submit()">
+          <option value="">All Statuses</option>
+          {% for s in statuses %}
+            <option value="{{ s }}" {% if status_filter == s %}selected{% endif %}>{{ s | capitalize }}</option>
+          {% endfor %}
+        </select>
+        <select name="priority" class="form-select form-select-sm" style="width:140px;" onchange="this.form.submit()">
+          <option value="">All Priorities</option>
+          {% for p in priorities %}
+            <option value="{{ p }}" {% if priority_filter == p %}selected{% endif %}>{{ p | capitalize }}</option>
+          {% endfor %}
+        </select>
+        {% if status_filter or priority_filter %}
+          <a href="{{ url_for('main.index') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-x-circle me-1"></i>Clear
+          </a>
+        {% endif %}
+      </form>
+      <a href="{{ url_for('main.create') }}" class="btn btn-sm btn-primary">
+        <i class="bi bi-plus-lg me-1"></i>New Task
+      </a>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    {% if tasks %}
+      <div class="table-responsive">
+        <table class="table table-hover table-striped align-middle mb-0">
+          <thead class="table-dark">
+            <tr>
+              <th>#</th>
+              <th>Title</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Due Date</th>
+              <th>Created</th>
+              <th class="text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for task in tasks %}
+            <tr>
+              <td class="text-muted small">{{ task.id }}</td>
+              <td>
+                <a href="{{ url_for('main.view', task_id=task.id) }}" class="fw-semibold text-decoration-none text-dark">
+                  {{ task.title }}
+                </a>
+              </td>
+              <td>
+                <span class="badge badge-priority-{{ task.priority }} rounded-pill">
+                  {{ task.priority | capitalize }}
+                </span>
+              </td>
+              <td>
+                <span class="badge badge-status-{{ task.status }} rounded-pill">
+                  {{ task.status | replace('-', ' ') | title }}
+                </span>
+              </td>
+              <td class="small text-muted">
+                {% if task.due_date %}{{ task.due_date.strftime('%d %b %Y') }}{% else %}—{% endif %}
+              </td>
+              <td class="small text-muted">{{ task.created_at.strftime('%d %b %Y') }}</td>
+              <td class="text-center">
+                <a href="{{ url_for('main.view', task_id=task.id) }}"
+                   class="btn btn-sm btn-outline-secondary me-1" title="View">
+                  <i class="bi bi-eye"></i>
+                </a>
+                <a href="{{ url_for('main.edit', task_id=task.id) }}"
+                   class="btn btn-sm btn-outline-primary me-1" title="Edit">
+                  <i class="bi bi-pencil"></i>
+                </a>
+                <button type="button" class="btn btn-sm btn-outline-danger" title="Delete"
+                        data-bs-toggle="modal" data-bs-target="#deleteModal"
+                        data-task-id="{{ task.id }}"
+                        data-task-title="{{ task.title }}"
+                        data-delete-url="{{ url_for('main.delete', task_id=task.id) }}">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="text-center py-5 text-muted">
+        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+        No tasks found.
+        <a href="{{ url_for('main.create') }}" class="d-block mt-2">Create your first task</a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+<!-- Single shared delete modal (outside table to avoid DOM issues) -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title">Confirm Delete</h6>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body text-start">
+        Delete task <strong id="deleteTaskTitle"></strong>?
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <form id="deleteForm" method="post" action="">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script>
+  var deleteModal = document.getElementById('deleteModal');
+  deleteModal.addEventListener('show.bs.modal', function(event) {
+    var btn = event.relatedTarget;
+    document.getElementById('deleteTaskTitle').textContent = btn.getAttribute('data-task-title');
+    document.getElementById('deleteForm').action = btn.getAttribute('data-delete-url');
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,12 @@
+Flask==3.1.1
+Flask-SQLAlchemy==3.1.1
+SQLAlchemy==2.0.36
+python-dotenv==1.0.1
+gunicorn==22.0.0
+pytest==8.3.3
+Werkzeug==3.1.3
+Flask-WTF==1.2.2
+WTForms==3.2.1
+# Security analysis tools (also used in CI/CD pipeline)
+bandit>=1.7.0
+pip-audit>=2.7.0
