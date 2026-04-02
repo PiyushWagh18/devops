@@ -1,6 +1,6 @@
-import urllib.request, json, time
+import urllib.request, json, time, os
 
-PAT = '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'
+PAT = os.environ.get('GITHUB_PAT', '')
 REPO = 'PiyushWagh18/devops'
 headers = {'Authorization': f'token {PAT}', 'Accept': 'application/vnd.github.v3+json'}
 
